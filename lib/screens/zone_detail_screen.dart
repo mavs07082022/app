@@ -129,6 +129,14 @@ class ZoneDetailScreen extends StatelessWidget {
               )
             else ...[
               _sectionTitle('Live Sensor Readings', Icons.sensors_rounded),
+              const SizedBox(height: 4),
+              Text(
+                reading.hasLiveAir
+                    ? 'Air + soil sensors reporting live'
+                    : 'Soil sensors reporting (air sensor unavailable)',
+                style: const TextStyle(
+                    fontSize: 11, color: AppColors.textSecondary),
+              ),
               const SizedBox(height: 10),
               LayoutBuilder(
                 builder: (context, c) {
@@ -171,13 +179,13 @@ class ZoneDetailScreen extends StatelessWidget {
                       ),
                       MetricTile(
                         icon: Icons.science_rounded,
-                        label: 'Soil pH',
+                        label: 'Soil pH*',
                         value: Fmt.two(reading.soilPh),
                         color: const Color(0xFF8B5CF6),
                       ),
                       MetricTile(
                         icon: Icons.bolt_rounded,
-                        label: 'EC',
+                        label: 'EC*',
                         value: '${Fmt.two(reading.soilEcMsCm)} mS/cm',
                         color: const Color(0xFFEAB308),
                       ),
@@ -185,15 +193,17 @@ class ZoneDetailScreen extends StatelessWidget {
                   );
                 },
               ),
+              const SizedBox(height: 10),
+              _estimateNote(),
               const SizedBox(height: 22),
 
-              _sectionTitle('Soil Nutrients', Icons.eco_rounded),
+              _sectionTitle('Soil Properties', Icons.eco_rounded),
               const SizedBox(height: 12),
               _card(
                 child: Column(
                   children: [
                     SensorBar(
-                      label: 'Nitrogen (N)',
+                      label: 'Nitrogen (N)*',
                       value: reading.soilNMgKg,
                       min: 0,
                       max: 250,
@@ -202,7 +212,7 @@ class ZoneDetailScreen extends StatelessWidget {
                     ),
                     const SizedBox(height: 14),
                     SensorBar(
-                      label: 'Phosphorus (P)',
+                      label: 'Phosphorus (P)*',
                       value: reading.soilPMgKg,
                       min: 0,
                       max: 150,
@@ -211,7 +221,7 @@ class ZoneDetailScreen extends StatelessWidget {
                     ),
                     const SizedBox(height: 14),
                     SensorBar(
-                      label: 'Potassium (K)',
+                      label: 'Potassium (K)*',
                       value: reading.soilKMgKg,
                       min: 0,
                       max: 300,
@@ -220,7 +230,7 @@ class ZoneDetailScreen extends StatelessWidget {
                     ),
                     const SizedBox(height: 14),
                     SensorBar(
-                      label: 'Salinity',
+                      label: 'Salinity*',
                       value: reading.soilSalinity,
                       min: 0,
                       max: 5,
@@ -277,9 +287,45 @@ class ZoneDetailScreen extends StatelessWidget {
                   ),
                 ),
               ],
+
+              const SizedBox(height: 24),
+              const Center(
+                child: Text(
+                  '* Estimated — no dedicated sensor installed. ',
+                  style: TextStyle(
+                      fontSize: 10, color: AppColors.textSecondary),
+                ),
+              ),
             ],
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _estimateNote() {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      decoration: BoxDecoration(
+        color: AppColors.warn.withOpacity(0.08),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: AppColors.warn.withOpacity(0.25)),
+      ),
+      child: Row(
+        children: const [
+          Icon(Icons.info_outline_rounded,
+              size: 14, color: AppColors.warn),
+          SizedBox(width: 6),
+          Expanded(
+            child: Text(
+              '* Marked values are backend-calibrated estimates for soil '
+              'chemistry. Only air temp/humidity, soil temp, and soil '
+              'moisture are directly measured.',
+              style: TextStyle(
+                  fontSize: 10, color: AppColors.textSecondary),
+            ),
+          ),
+        ],
       ),
     );
   }

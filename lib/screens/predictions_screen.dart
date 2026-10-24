@@ -243,12 +243,12 @@ class _ZoneBlock extends StatelessWidget {
 
     return Row(
       children: [
-        cell('pH', Fmt.two(reading.soilPh)),
+        cell('pH*', Fmt.two(reading.soilPh)),
         cell('Moist', '${Fmt.one(reading.soilMoisturePct)}%'),
         cell('Temp', '${Fmt.one(reading.soilTemperatureC)}°'),
-        cell('N', Fmt.one(reading.soilNMgKg)),
-        cell('P', Fmt.one(reading.soilPMgKg)),
-        cell('K', Fmt.one(reading.soilKMgKg)),
+        cell('N*', Fmt.one(reading.soilNMgKg)),
+        cell('P*', Fmt.one(reading.soilPMgKg)),
+        cell('K*', Fmt.one(reading.soilKMgKg)),
       ],
     );
   }

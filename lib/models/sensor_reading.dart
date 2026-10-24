@@ -68,4 +68,17 @@ class SensorReading {
         'soil_ph': soilPh,
         if (timestamp != null) 'timestamp': timestamp!.toIso8601String(),
       };
+
+  /// True when the field came from a real sensor.
+  bool get hasLiveAir => airTemperatureC != null && airHumidityPct != null;
+
+  /// These fields have no sensor on the current node.
+  static const Set<String> estimatedFields = {
+    'soil_ec_ms_cm',
+    'soil_salinity',
+    'soil_n_mg_kg',
+    'soil_p_mg_kg',
+    'soil_k_mg_kg',
+    'soil_ph',
+  };
 }
