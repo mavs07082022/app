@@ -30,6 +30,7 @@ class PredictionTile extends StatelessWidget {
     final color = Color(prediction.suitabilityColorValue);
     final isTop = prediction.isTopPick;
 
+    // Always prioritize the Score over Confidence for display
     final String primaryNumber;
     final String primaryLabel;
     if (prediction.score > 0) {

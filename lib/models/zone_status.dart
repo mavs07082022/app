@@ -37,28 +37,14 @@ class ZoneStatus {
     );
   }
 
-  /// Returns true if the last reading arrived within the last 60 seconds.
-  ///
-  /// Tolerant of clock drift on the Pi (which has no RTC or internet):
-  /// if the timestamp is in the FUTURE relative to the phone (because
-  /// the Pi's clock is ahead), we still treat the zone as online.
+  /// Returns true if the backend says it's online, OR if we just received
+  /// a reading regardless of what the Pi's clock says.
   bool get effectivelyOnline {
     if (!isOnline) return false;
-    if (lastUpdated == null) return false;
-
-    // Normalize to UTC for consistent comparison
-    final nowUtc = DateTime.now().toUtc();
-    final updatedUtc = lastUpdated!.toUtc();
-    final diff = nowUtc.difference(updatedUtc);
-
-    // Online if the reading arrived recently (within 60s ago)
-    if (diff.inSeconds.abs() < 60) return true;
-
-    // If the timestamp is in the future by up to 12 hours,
-    // it's still likely just clock drift — treat as online.
-    if (diff.inSeconds < 0 && diff.inSeconds.abs() < 12 * 3600) {
-      return true;
-    }
+    
+    // If we have a reading, and the backend says it's online, trust it.
+    // This bypasses the Pi's broken clock completely.
+    if (lastReading != null) return true;
 
     return false;
   }
