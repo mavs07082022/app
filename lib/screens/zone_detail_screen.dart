@@ -1,17 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-
-import '../models/historical_prediction.dart';
-import '../models/prediction.dart';
 import '../providers/zone_provider.dart';
 import '../theme/app_theme.dart';
 import '../utils/formatters.dart';
 import '../widgets/offline_banner.dart';
-import '../widgets/comparison_card.dart';
 import '../widgets/gradient_card.dart';
 import '../widgets/metric_tile.dart';
 import '../widgets/prediction_tile.dart';
-import '../widgets/sensor_bar.dart';
 
 class ZoneDetailScreen extends StatelessWidget {
   final String zoneId;
@@ -21,77 +16,70 @@ class ZoneDetailScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final provider = context.watch<ZoneProvider>();
     final zone = provider.getZone(zoneId);
-    final historical = provider.getHistorical(zoneId);
 
     if (zone == null) {
-      return Scaffold(
-        appBar: AppBar(title: const Text('Zone')),
-        body: const Center(child: Text('Zone not found')),
-      );
+      return Scaffold(appBar: AppBar(title: const Text('Zone')), body: const Center(child: Text('Zone not found')));
     }
 
     final reading = zone.lastReading;
     final prediction = zone.lastPrediction;
     final online = zone.effectivelyOnline;
-    final (matches, total) = provider.comparePredictions(zoneId);
+    final status = prediction?.status ?? 'normal';
+    final advice = prediction?.advice ?? '';
+    final fertAdvice = prediction?.fertilizerAdvice ?? '';
+    Color statusColor = status == 'critical' ? AppColors.danger : (status == 'warning' ? AppColors.warn : AppColors.success);
 
     return Scaffold(
-      appBar: AppBar(
-        title: Text(zone.zoneName.isEmpty ? zone.zoneId : zone.zoneName),
-      ),
+      appBar: AppBar(title: Text(zone.zoneName.isEmpty ? zone.zoneId : zone.zoneName)),
       body: RefreshIndicator(
         onRefresh: provider.refresh,
         color: AppColors.primary,
         child: ListView(
           padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
           children: [
+            if (prediction != null && status != 'normal')
+              Container(
+                margin: const EdgeInsets.only(bottom: 16),
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(color: statusColor.withOpacity(0.1), borderRadius: BorderRadius.circular(16), border: Border.all(color: statusColor.withOpacity(0.4), width: 1.5)),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Icon(Icons.warning_amber_rounded, color: statusColor, size: 28),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(status == 'critical' ? 'Critical Warning' : 'Attention Needed', style: TextStyle(color: statusColor, fontWeight: FontWeight.w800, fontSize: 14)),
+                          const SizedBox(height: 4),
+                          Text(advice, style: const TextStyle(fontSize: 13, color: AppColors.textPrimary)),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
             GradientCard(
-              colors: online
-                  ? const [AppColors.primaryDark, AppColors.primary]
-                  : const [Color(0xFF991B1B), AppColors.danger],
+              colors: online ? const [AppColors.primaryDark, AppColors.primary] : const [Color(0xFF991B1B), AppColors.danger],
               padding: const EdgeInsets.all(18),
               child: Row(
                 children: [
                   Container(
                     padding: const EdgeInsets.all(10),
-                    decoration: BoxDecoration(
-                      color: Colors.white.withOpacity(0.2),
-                      borderRadius: BorderRadius.circular(14),
-                    ),
-                    child: Icon(
-                      online ? Icons.wifi_tethering : Icons.wifi_off,
-                      color: Colors.white,
-                      size: 24,
-                    ),
+                    decoration: BoxDecoration(color: Colors.white.withOpacity(0.2), borderRadius: BorderRadius.circular(14)),
+                    child: Icon(online ? Icons.wifi_tethering : Icons.wifi_off, color: Colors.white, size: 24),
                   ),
                   const SizedBox(width: 14),
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(
-                          online ? 'LIVE DATA' : 'OFFLINE',
-                          style: TextStyle(
-                              color: Colors.white.withOpacity(0.85),
-                              fontSize: 11,
-                              letterSpacing: 1.2,
-                              fontWeight: FontWeight.w600),
-                        ),
+                        Text(online ? 'LIVE DATA' : 'OFFLINE', style: TextStyle(color: Colors.white.withOpacity(0.85), fontSize: 11, letterSpacing: 1.2, fontWeight: FontWeight.w600)),
                         const SizedBox(height: 2),
-                        Text(
-                          zone.zoneName.isEmpty ? zone.zoneId : zone.zoneName,
-                          style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 17,
-                              fontWeight: FontWeight.w800),
-                        ),
+                        Text(zone.zoneName, style: const TextStyle(color: Colors.white, fontSize: 17, fontWeight: FontWeight.w800)),
                         const SizedBox(height: 2),
-                        Text(
-                          'Updated ${Fmt.ago(zone.lastUpdated)}',
-                          style: TextStyle(
-                              color: Colors.white.withOpacity(0.85),
-                              fontSize: 11),
-                        ),
+                        Text('Updated ${Fmt.ago(zone.fetchedAt)}', style: TextStyle(color: Colors.white.withOpacity(0.85), fontSize: 11)),
                       ],
                     ),
                   ),
@@ -99,44 +87,18 @@ class ZoneDetailScreen extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 20),
-
             if (provider.isUsingCache) ...[
-              OfflineBanner(
-                cacheTimestamp: provider.cacheTimestamp,
-                isStale: provider.isCacheStale,
-                onRetry: provider.refresh,
-              ),
+              OfflineBanner(cacheTimestamp: provider.cacheTimestamp, isStale: provider.isCacheStale, onRetry: provider.refresh),
               const SizedBox(height: 18),
             ],
-
             if (reading == null)
               Container(
                 padding: const EdgeInsets.all(40),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(18),
-                  border: Border.all(color: AppColors.border),
-                ),
-                child: const Column(
-                  children: [
-                    Icon(Icons.sensors_off,
-                        size: 42, color: AppColors.textSecondary),
-                    SizedBox(height: 10),
-                    Text('Waiting for sensor data…',
-                        style: TextStyle(color: AppColors.textSecondary)),
-                  ],
-                ),
+                decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(18), border: Border.all(color: AppColors.border)),
+                child: const Column(children: [Icon(Icons.sensors_off, size: 42, color: AppColors.textSecondary), SizedBox(height: 10), Text('Waiting for sensor data…', style: TextStyle(color: AppColors.textSecondary))]),
               )
             else ...[
               _sectionTitle('Live Sensor Readings', Icons.sensors_rounded),
-              const SizedBox(height: 4),
-              Text(
-                reading.hasLiveAir
-                    ? 'Air + soil sensors reporting live'
-                    : 'Soil sensors reporting (air sensor unavailable)',
-                style: const TextStyle(
-                    fontSize: 11, color: AppColors.textSecondary),
-              ),
               const SizedBox(height: 10),
               LayoutBuilder(
                 builder: (context, c) {
@@ -149,153 +111,49 @@ class ZoneDetailScreen extends StatelessWidget {
                     crossAxisSpacing: 10,
                     childAspectRatio: twoCol ? 2.4 : 2.1,
                     children: [
-                      MetricTile(
-                        icon: Icons.thermostat_rounded,
-                        label: 'Air Temp',
-                        value: reading.airTemperatureC != null
-                            ? '${Fmt.one(reading.airTemperatureC!)} °C'
-                            : '--',
-                        color: const Color(0xFFF97316),
-                      ),
-                      MetricTile(
-                        icon: Icons.water_drop_rounded,
-                        label: 'Humidity',
-                        value: reading.airHumidityPct != null
-                            ? '${Fmt.one(reading.airHumidityPct!)} %'
-                            : '--',
-                        color: const Color(0xFF3B82F6),
-                      ),
-                      MetricTile(
-                        icon: Icons.thermostat_auto_rounded,
-                        label: 'Soil Temp',
-                        value: '${Fmt.one(reading.soilTemperatureC)} °C',
-                        color: const Color(0xFFEF4444),
-                      ),
-                      MetricTile(
-                        icon: Icons.grass_rounded,
-                        label: 'Soil Moisture',
-                        value: '${Fmt.one(reading.soilMoisturePct)} %',
-                        color: const Color(0xFF14B8A6),
-                      ),
-                      MetricTile(
-                        icon: Icons.science_rounded,
-                        label: 'Soil pH*',
-                        value: Fmt.two(reading.soilPh),
-                        color: const Color(0xFF8B5CF6),
-                      ),
-                      MetricTile(
-                        icon: Icons.bolt_rounded,
-                        label: 'EC*',
-                        value: '${Fmt.two(reading.soilEcMsCm)} mS/cm',
-                        color: const Color(0xFFEAB308),
-                      ),
+                      MetricTile(icon: Icons.thermostat_rounded, label: 'Air Temp', value: reading.airTemperatureC != null ? '${Fmt.one(reading.airTemperatureC!)} °C' : '--', color: const Color(0xFFF97316)),
+                      MetricTile(icon: Icons.water_drop_rounded, label: 'Humidity', value: reading.airHumidityPct != null ? '${Fmt.one(reading.airHumidityPct!)} %' : '--', color: const Color(0xFF3B82F6)),
+                      MetricTile(icon: Icons.thermostat_auto_rounded, label: 'Soil Temp', value: '${Fmt.one(reading.soilTemperatureC)} °C', color: const Color(0xFFEF4444)),
+                      MetricTile(icon: Icons.grass_rounded, label: 'Soil Moisture', value: '${Fmt.one(reading.soilMoisturePct)} %', color: const Color(0xFF14B8A6)),
                     ],
                   );
                 },
               ),
-              const SizedBox(height: 10),
-              _estimateNote(),
               const SizedBox(height: 22),
-
-              _sectionTitle('Soil Properties', Icons.eco_rounded),
-              const SizedBox(height: 12),
-              _card(
-                child: Column(
-                  children: [
-                    SensorBar(
-                      label: 'Nitrogen (N)*',
-                      value: reading.soilNMgKg,
-                      min: 0,
-                      max: 250,
-                      unit: 'mg/kg',
-                      color: const Color(0xFF22C55E),
-                    ),
-                    const SizedBox(height: 14),
-                    SensorBar(
-                      label: 'Phosphorus (P)*',
-                      value: reading.soilPMgKg,
-                      min: 0,
-                      max: 150,
-                      unit: 'mg/kg',
-                      color: const Color(0xFFF59E0B),
-                    ),
-                    const SizedBox(height: 14),
-                    SensorBar(
-                      label: 'Potassium (K)*',
-                      value: reading.soilKMgKg,
-                      min: 0,
-                      max: 300,
-                      unit: 'mg/kg',
-                      color: const Color(0xFF8B5CF6),
-                    ),
-                    const SizedBox(height: 14),
-                    SensorBar(
-                      label: 'Salinity*',
-                      value: reading.soilSalinity,
-                      min: 0,
-                      max: 5,
-                      unit: 'dS/m',
-                      color: const Color(0xFFEF4444),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 22),
-
               if (prediction != null && prediction.predictions.isNotEmpty) ...[
-                _sectionTitle(
-                    'AI Crop Ranking', Icons.auto_awesome_rounded),
+                _sectionTitle('AI Crop Ranking', Icons.auto_awesome_rounded),
                 const SizedBox(height: 4),
-                const Text(
-                  'Weighted agronomic fit to current sensor readings',
-                  style: TextStyle(
-                      fontSize: 11, color: AppColors.textSecondary),
-                ),
+                const Text('Based strictly on real-time Temperature and Moisture', style: TextStyle(fontSize: 11, color: AppColors.textSecondary)),
                 const SizedBox(height: 12),
-                ...prediction.predictions.map(
-                  (p) => PredictionTile(
-                    prediction: p,
-                    highlight: p.isTopPick,
-                    showFactors: true,
-                  ),
-                ),
-              ],
-
-              if (prediction != null && historical != null) ...[
-                const SizedBox(height: 26),
-                _sectionTitle('Live vs Historical Comparison',
-                    Icons.compare_arrows_rounded),
-                const SizedBox(height: 4),
-                const Text(
-                  'How does the current sensor reading match the model\'s baseline?',
-                  style: TextStyle(
-                      fontSize: 11, color: AppColors.textSecondary),
-                ),
-                const SizedBox(height: 12),
-                _comparisonSummaryCard(matches, total),
-                const SizedBox(height: 12),
-                ..._buildComparisons(
-                    prediction.predictions, historical.predictions),
-              ] else if (historical != null) ...[
+                ...prediction.predictions.map((p) => PredictionTile(prediction: p, highlight: p.isTopPick, showFactors: true)),
+                
                 const SizedBox(height: 22),
-                _sectionTitle('Historical Baseline', Icons.history_rounded),
-                const SizedBox(height: 12),
-                ...historical.predictions.map(
-                  (p) => PredictionTile(
-                    prediction: p,
-                    highlight: p.crop == historical.bestCrop,
+                Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFEFF6FF), 
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(color: const Color(0xFF93C5FD)),
+                  ),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Icon(Icons.science_rounded, color: Color(0xFF2563EB), size: 28),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text("Fertilizer & Action Advisory", style: TextStyle(color: Color(0xFF2563EB), fontWeight: FontWeight.w800, fontSize: 14)),
+                            const SizedBox(height: 4),
+                            Text(fertAdvice, style: const TextStyle(fontSize: 13, color: AppColors.textPrimary)),
+                          ],
+                        ),
+                      ),
+                    ],
                   ),
                 ),
               ],
-
-              const SizedBox(height: 24),
-              const Center(
-                child: Text(
-                  '* Estimated — no dedicated sensor installed. ',
-                  style: TextStyle(
-                      fontSize: 10, color: AppColors.textSecondary),
-                ),
-              ),
             ],
           ],
         ),
@@ -303,137 +161,7 @@ class ZoneDetailScreen extends StatelessWidget {
     );
   }
 
-  Widget _estimateNote() {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-      decoration: BoxDecoration(
-        color: AppColors.warn.withOpacity(0.08),
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: AppColors.warn.withOpacity(0.25)),
-      ),
-      child: Row(
-        children: const [
-          Icon(Icons.info_outline_rounded,
-              size: 14, color: AppColors.warn),
-          SizedBox(width: 6),
-          Expanded(
-            child: Text(
-              '* Marked values are backend-calibrated estimates for soil '
-              'chemistry. Only air temp/humidity, soil temp, and soil '
-              'moisture are directly measured.',
-              style: TextStyle(
-                  fontSize: 10, color: AppColors.textSecondary),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _comparisonSummaryCard(int matches, int total) {
-    final pct = total == 0 ? 0.0 : matches / total;
-    final color = pct >= 0.8
-        ? AppColors.success
-        : pct >= 0.5
-            ? AppColors.warn
-            : AppColors.danger;
-
-    return Container(
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: color.withOpacity(0.08),
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: color.withOpacity(0.3)),
-      ),
-      child: Row(
-        children: [
-          Container(
-            padding: const EdgeInsets.all(10),
-            decoration: BoxDecoration(
-              color: color.withOpacity(0.15),
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: Icon(Icons.analytics_rounded, color: color, size: 22),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Prediction Agreement',
-                  style: TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w700,
-                      color: color),
-                ),
-                const SizedBox(height: 2),
-                Text(
-                  '$matches of $total crops match the historical baseline',
-                  style: const TextStyle(
-                      fontSize: 11, color: AppColors.textSecondary),
-                ),
-              ],
-            ),
-          ),
-          Text(
-            Fmt.pct(pct),
-            style: TextStyle(
-                fontSize: 20, fontWeight: FontWeight.w800, color: color),
-          ),
-        ],
-      ),
-    );
-  }
-
-  List<Widget> _buildComparisons(
-    List<CropPrediction> live,
-    List<CropPrediction> hist,
-  ) {
-    final widgets = <Widget>[];
-    for (final lp in live) {
-      CropPrediction? hp;
-      try {
-        hp = hist.firstWhere((h) => h.crop == lp.crop);
-      } catch (_) {
-        hp = null;
-      }
-      if (hp == null) continue;
-      widgets.add(ComparisonCard(live: lp, historical: hp));
-    }
-    return widgets;
-  }
-
   Widget _sectionTitle(String text, IconData icon) {
-    return Row(
-      children: [
-        Icon(icon, size: 20, color: AppColors.primary),
-        const SizedBox(width: 8),
-        Expanded(
-          child: Text(text,
-              style: const TextStyle(
-                  fontSize: 15, fontWeight: FontWeight.w800)),
-        ),
-      ],
-    );
-  }
-
-  Widget _card({required Widget child}) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: AppColors.border),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.03),
-            blurRadius: 10,
-            offset: const Offset(0, 3),
-          ),
-        ],
-      ),
-      child: child,
-    );
+    return Row(children: [Icon(icon, size: 20, color: AppColors.primary), const SizedBox(width: 8), Expanded(child: Text(text, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w800)))]);
   }
 }

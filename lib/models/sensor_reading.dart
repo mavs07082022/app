@@ -10,7 +10,7 @@ class SensorReading {
   final double soilPMgKg;
   final double soilKMgKg;
   final double soilPh;
-  final DateTime? timestamp;
+  final String? timestamp;
 
   SensorReading({
     required this.zoneId,
@@ -48,9 +48,7 @@ class SensorReading {
       soilPMgKg: d(json['soil_p_mg_kg'], 40),
       soilKMgKg: d(json['soil_k_mg_kg'], 120),
       soilPh: d(json['soil_ph'], 6.5),
-      timestamp: json['timestamp'] != null
-          ? DateTime.tryParse(json['timestamp'].toString())
-          : null,
+      timestamp: json['timestamp']?.toString(),
     );
   }
 
@@ -66,19 +64,6 @@ class SensorReading {
         'soil_p_mg_kg': soilPMgKg,
         'soil_k_mg_kg': soilKMgKg,
         'soil_ph': soilPh,
-        if (timestamp != null) 'timestamp': timestamp!.toIso8601String(),
+        if (timestamp != null) 'timestamp': timestamp,
       };
-
-  /// True when the field came from a real sensor.
-  bool get hasLiveAir => airTemperatureC != null && airHumidityPct != null;
-
-  /// These fields have no sensor on the current node.
-  static const Set<String> estimatedFields = {
-    'soil_ec_ms_cm',
-    'soil_salinity',
-    'soil_n_mg_kg',
-    'soil_p_mg_kg',
-    'soil_k_mg_kg',
-    'soil_ph',
-  };
 }

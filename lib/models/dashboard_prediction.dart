@@ -2,7 +2,7 @@ import 'prediction.dart';
 
 class DashboardPredictionResponse {
   final String id;
-  final DateTime timestamp;
+  final String timestamp;
   final String farmId;
   final String farmName;
   final Map<String, dynamic> inputConditions;
@@ -28,29 +28,17 @@ class DashboardPredictionResponse {
   factory DashboardPredictionResponse.fromJson(Map<String, dynamic> json) {
     return DashboardPredictionResponse(
       id: (json['id'] ?? '').toString(),
-      timestamp: json['timestamp'] != null
-          ? DateTime.tryParse(json['timestamp'].toString()) ?? DateTime.now()
-          : DateTime.now(),
+      timestamp: json['timestamp']?.toString() ?? '',
       farmId: (json['farmId'] ?? '').toString(),
       farmName: (json['farmName'] ?? '').toString(),
-      inputConditions:
-          (json['inputConditions'] as Map?)?.cast<String, dynamic>() ?? {},
-      predictions: (json['predictions'] as List?)
-              ?.map((e) =>
-                  CropPrediction.fromJson((e as Map).cast<String, dynamic>()))
-              .toList() ??
-          [],
+      inputConditions: (json['inputConditions'] as Map?)?.cast<String, dynamic>() ?? {},
+      predictions: (json['predictions'] as List?)?.map((e) => CropPrediction.fromJson((e as Map).cast<String, dynamic>())).toList() ?? [],
       topPick: json['topPick']?.toString(),
-      confidenceGap: (json['confidenceGap'] is num)
-          ? (json['confidenceGap'] as num).toDouble()
-          : null,
+      confidenceGap: (json['confidenceGap'] is num) ? (json['confidenceGap'] as num).toDouble() : null,
       modelVersion: (json['modelVersion'] ?? '').toString(),
-      processingTimeMs: (json['processingTimeMs'] is num)
-          ? (json['processingTimeMs'] as num).toInt()
-          : 0,
+      processingTimeMs: (json['processingTimeMs'] is num) ? (json['processingTimeMs'] as num).toInt() : 0,
     );
   }
 
-  CropPrediction? get topCrop =>
-      predictions.isEmpty ? null : predictions.first;
+  CropPrediction? get topCrop => predictions.isEmpty ? null : predictions.first;
 }

@@ -8,6 +8,7 @@ class ZoneStatus {
   final SensorReading? lastReading;
   final PredictionResponse? lastPrediction;
   final DateTime? lastUpdated;
+  final DateTime? fetchedAt;
 
   ZoneStatus({
     required this.zoneId,
@@ -16,6 +17,7 @@ class ZoneStatus {
     this.lastReading,
     this.lastPrediction,
     this.lastUpdated,
+    this.fetchedAt,
   });
 
   factory ZoneStatus.fromJson(Map<String, dynamic> json) {
@@ -34,19 +36,12 @@ class ZoneStatus {
       lastUpdated: json['last_updated'] != null
           ? DateTime.tryParse(json['last_updated'].toString())
           : null,
+      fetchedAt: DateTime.now(), 
     );
   }
 
-  /// Returns true if the backend says it's online, OR if we just received
-  /// a reading regardless of what the Pi's clock says.
   bool get effectivelyOnline {
-    if (!isOnline) return false;
-    
-    // If we have a reading, and the backend says it's online, trust it.
-    // This bypasses the Pi's broken clock completely.
-    if (lastReading != null) return true;
-
-    return false;
+    return isOnline && lastReading != null;
   }
 }
 

@@ -17,11 +17,24 @@ dependencies:
   connectivity_plus: ^6.0.3
   google_fonts: ^6.1.0
   flutter_animate: ^4.5.0
+  fl_chart: ^0.66.0
 
 dev_dependencies:
   flutter_test:
     sdk: flutter
   flutter_lints: ^3.0.1
+  flutter_launcher_icons: ^0.13.1  # Added for app icon
 
 flutter:
   uses-material-design: true
+  assets:
+    - assets/app_icon.png
+
+# Configuration for the App Icon Generator
+flutter_launcher_icons:
+  android: "launcher_icon"
+  ios: true
+  image_path: "assets/app_icon.png"
+  min_sdk_android: 21
+  adaptive_icon_background: "#FFFFFF" # White background for modern Android phones
+  adaptive_icon_foreground: "assets/app_icon.png"

@@ -20,7 +20,7 @@ class ZoneProvider extends ChangeNotifier {
   StreamSubscription<bool>? _connSub;
 
   List<ZoneStatus> _zones = [];
-  List<HistoricalPrediction> _historical = [];
+  List<ZoneHistory> _history = [];
   bool _isLoading = false;
   bool _isServerOnline = false;
   bool _isDeviceOnline = true;
@@ -29,12 +29,10 @@ class ZoneProvider extends ChangeNotifier {
   String? _error;
   DateTime? _lastRefresh;
 
-  /// Cache considered stale after this duration.
   static const Duration _cacheStaleAfter = Duration(hours: 24);
 
-  // ---------------- Getters ----------------
   List<ZoneStatus> get zones => _zones;
-  List<HistoricalPrediction> get historical => _historical;
+  List<ZoneHistory> get history => _history;
   bool get isLoading => _isLoading;
   bool get isServerOnline => _isServerOnline;
   bool get isDeviceOnline => _isDeviceOnline;
@@ -51,23 +49,19 @@ class ZoneProvider extends ChangeNotifier {
     return DateTime.now().difference(_cacheTimestamp!) > _cacheStaleAfter;
   }
 
-  // ---------------- Lifecycle ----------------
   ZoneProvider() {
     _init();
   }
 
   Future<void> _init() async {
-    // 1. Load saved server URL
     final prefs = await SharedPreferences.getInstance();
     final saved = prefs.getString('server_url');
     if (saved != null && saved.isNotEmpty) {
       _api.updateBaseUrl(saved);
     }
 
-    // 2. Load cache so UI has something to show immediately
     await _loadFromCache();
 
-    // 3. Watch network changes for auto-retry
     _isDeviceOnline = await _connectivity.isOnline();
     _connSub = _connectivity.onStatusChange.listen((online) {
       final wasOffline = !_isDeviceOnline;
@@ -78,11 +72,9 @@ class ZoneProvider extends ChangeNotifier {
       }
     });
 
-    // 4. Start polling
     startPolling();
   }
 
-  // ---------------- Cache ----------------
   Future<void> _loadFromCache() async {
     try {
       final zonesRaw = await _cache.loadZones();
@@ -91,7 +83,7 @@ class ZoneProvider extends ChangeNotifier {
         _zones = AllZonesStatus.fromJson(zonesRaw).zones;
       }
       if (histRaw != null) {
-        _historical = AllHistoricalPredictions.fromJson(histRaw).items;
+        _history = AllHistoricalPredictions.fromJson(histRaw).items;
       }
       _cacheTimestamp = await _cache.zonesCachedAt();
       if (_zones.isNotEmpty) {
@@ -110,7 +102,6 @@ class ZoneProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  // ---------------- Server URL ----------------
   Future<void> setServerUrl(String url) async {
     _api.updateBaseUrl(url);
     final prefs = await SharedPreferences.getInstance();
@@ -119,13 +110,9 @@ class ZoneProvider extends ChangeNotifier {
     await refresh();
   }
 
-  // ---------------- Polling ----------------
   void startPolling() {
     _pollTimer?.cancel();
-    _pollTimer = Timer.periodic(
-      ApiConfig.pollInterval,
-      (_) => _silentRefresh(),
-    );
+    _pollTimer = Timer.periodic(ApiConfig.pollInterval, (_) => _silentRefresh());
     refresh();
   }
 
@@ -134,7 +121,6 @@ class ZoneProvider extends ChangeNotifier {
     _pollTimer = null;
   }
 
-  // ---------------- Refresh ----------------
   Future<void> refresh() async {
     _isLoading = true;
     _error = null;
@@ -148,9 +134,7 @@ class ZoneProvider extends ChangeNotifier {
     if (!_isDeviceOnline) {
       _isServerOnline = false;
       _error = 'Device offline';
-      if (_zones.isNotEmpty) {
-        _source = DataSource.cache;
-      }
+      if (_zones.isNotEmpty) _source = DataSource.cache;
       notifyListeners();
       return;
     }
@@ -161,20 +145,15 @@ class ZoneProvider extends ChangeNotifier {
 
       if (online) {
         final zonesRaw = await _api.fetchAllZonesRaw();
-
         Map<String, dynamic> histRaw;
         try {
           histRaw = await _api.fetchHistoricalRaw();
         } catch (_) {
-          histRaw = {
-            'historical': [],
-            'server_time': DateTime.now().toIso8601String(),
-            'note': '',
-          };
+          histRaw = {'historical': [], 'server_time': DateTime.now().toIso8601String(), 'note': ''};
         }
 
         _zones = AllZonesStatus.fromJson(zonesRaw).zones;
-        _historical = AllHistoricalPredictions.fromJson(histRaw).items;
+        _history = AllHistoricalPredictions.fromJson(histRaw).items;
         _lastRefresh = DateTime.now();
         _source = DataSource.live;
         _cacheTimestamp = null;
@@ -184,57 +163,18 @@ class ZoneProvider extends ChangeNotifier {
         await _cache.saveHistorical(histRaw);
       } else {
         _error = 'Server unreachable';
-        if (_zones.isEmpty) {
-          await _loadFromCache();
-        } else {
-          _source = DataSource.cache;
-        }
+        if (_zones.isEmpty) { await _loadFromCache(); } else { _source = DataSource.cache; }
       }
     } catch (e) {
       _isServerOnline = false;
       _error = e.toString();
-      if (_zones.isEmpty) {
-        await _loadFromCache();
-      } else {
-        _source = DataSource.cache;
-      }
+      if (_zones.isEmpty) { await _loadFromCache(); } else { _source = DataSource.cache; }
     }
     notifyListeners();
   }
 
-  // ---------------- Lookups ----------------
   ZoneStatus? getZone(String zoneId) {
-    try {
-      return _zones.firstWhere((z) => z.zoneId == zoneId);
-    } catch (_) {
-      return null;
-    }
-  }
-
-  HistoricalPrediction? getHistorical(String zoneId) {
-    try {
-      return _historical.firstWhere((h) => h.zoneId == zoneId);
-    } catch (_) {
-      return null;
-    }
-  }
-
-  (int, int) comparePredictions(String zoneId) {
-    final live = getZone(zoneId)?.lastPrediction;
-    final hist = getHistorical(zoneId);
-    if (live == null || hist == null) return (0, 0);
-
-    int matches = 0;
-    int total = 0;
-    for (final lp in live.predictions) {
-      final hp = hist.predictions.firstWhere(
-        (h) => h.crop == lp.crop,
-        orElse: () => lp,
-      );
-      total++;
-      if (lp.suitability == hp.suitability) matches++;
-    }
-    return (matches, total);
+    try { return _zones.firstWhere((z) => z.zoneId == zoneId); } catch (_) { return null; }
   }
 
   @override
