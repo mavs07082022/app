@@ -81,13 +81,12 @@ class _HistoryScreenState extends State<HistoryScreen> {
       return const Center(child: Text("No records for this month.", style: TextStyle(color: AppColors.textSecondary)));
     }
 
+    final reversedData = filteredData.reversed.toList();
+
     return ListView.builder(
-      itemCount: filteredData.length,
+      itemCount: reversedData.length,
       itemBuilder: (context, index) {
-        // Use the index to subtract a few seconds for display purposes
-        // so the list shows a slight progression (e.g., 10:28:50, 10:28:40)
-        final d = filteredData[filteredData.length - 1 - index]; 
-        final displayTime = d.parsedTime.subtract(Duration(seconds: index * 10));
+        final d = reversedData[index]; 
 
         return Container(
           margin: const EdgeInsets.only(bottom: 12),
@@ -102,8 +101,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
                     children: [
                       const Icon(Icons.access_time, size: 16, color: AppColors.success),
                       const SizedBox(width: 6),
-                      // Show the phone's formatted time with AM/PM
-                      Text(DateFormat('MMM dd, yyyy • hh:mm:ss a').format(displayTime), style: const TextStyle(color: AppColors.success, fontWeight: FontWeight.w700)),
+                      Text(DateFormat('MMM dd, yyyy • hh:mm:ss a').format(d.parsedTime), style: const TextStyle(color: AppColors.success, fontWeight: FontWeight.w700)),
                     ],
                   ),
                   Container(

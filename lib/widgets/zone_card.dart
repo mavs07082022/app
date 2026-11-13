@@ -76,7 +76,6 @@ class ZoneCard extends StatelessWidget {
                                 children: [
                                   Container(width: 8, height: 8, decoration: BoxDecoration(color: online ? AppColors.success : AppColors.danger, shape: BoxShape.circle)),
                                   const SizedBox(width: 6),
-                                  // FIXED: Using zone.fetchedAt
                                   Text(online ? 'Live • ${Fmt.ago(zone.fetchedAt)}' : 'Offline', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: online ? AppColors.success : AppColors.danger)),
                                 ],
                               ),
@@ -106,7 +105,29 @@ class ZoneCard extends StatelessWidget {
                           _mini('💦', '${Fmt.one(reading.soilMoisturePct)}%', 'Moist'),
                         ],
                       ),
+                      const SizedBox(height: 12),
+                      
+                      // Nutrients (Row 2) - EC Removed
+                      Container(
+                        padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 12),
+                        decoration: BoxDecoration(
+                          color: Colors.grey.shade50,
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: Colors.grey.shade200),
+                        ),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceAround,
+                          children: [
+                            _nutrient('pH', reading.soilPh == 0 ? '--' : Fmt.one(reading.soilPh), Colors.blue),
+                            _nutrient('N', reading.soilNMgKg == 0 ? '--' : Fmt.one(reading.soilNMgKg), Colors.green),
+                            _nutrient('P', reading.soilPMgKg == 0 ? '--' : Fmt.one(reading.soilPMgKg), Colors.orange),
+                            _nutrient('K', reading.soilKMgKg == 0 ? '--' : Fmt.one(reading.soilKMgKg), Colors.purple),
+                          ],
+                        ),
+                      ),
                       const SizedBox(height: 14),
+
+                      // Top Recommendation Box
                       if (prediction != null && prediction.predictions.isNotEmpty)
                         Container(
                           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
@@ -140,6 +161,16 @@ class ZoneCard extends StatelessWidget {
           Text(label, style: const TextStyle(fontSize: 9, color: AppColors.textSecondary)),
         ],
       ),
+    );
+  }
+
+  Widget _nutrient(String label, String value, Color color) {
+    return Column(
+      children: [
+        Text(label, style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: color)),
+        const SizedBox(height: 2),
+        Text(value, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w800, color: AppColors.textPrimary)),
+      ],
     );
   }
 }

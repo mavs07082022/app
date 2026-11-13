@@ -16,10 +16,14 @@ class HistoryDataPoint {
   });
 
   factory HistoryDataPoint.fromJson(Map<String, dynamic> json) {
-    // FORCE THE PHONE'S TIME INSTEAD OF THE PI'S TIME
+    DateTime parsed = DateTime.now();
+    if (json['time'] != null) {
+      parsed = DateTime.tryParse(json['time'].toString())?.toLocal() ?? DateTime.now();
+    }
+
     return HistoryDataPoint(
       timeStr: json['time']?.toString() ?? '',
-      parsedTime: DateTime.now(), // <--- This fixes the AM/PM issue
+      parsedTime: parsed, 
       moisture: (json['moisture'] as num?)?.toDouble() ?? 0.0,
       temp: (json['temp'] as num?)?.toDouble() ?? 0.0,
       humidity: (json['humidity'] as num?)?.toDouble() ?? 0.0,
@@ -54,7 +58,9 @@ class AllHistoricalPredictions {
   factory AllHistoricalPredictions.fromJson(Map<String, dynamic> json) {
     return AllHistoricalPredictions(
       items: (json['historical'] as List?)?.map((e) => ZoneHistory.fromJson((e as Map).cast<String, dynamic>())).toList() ?? [],
-      serverTime: DateTime.now(),
+      serverTime: json['server_time'] != null 
+          ? DateTime.tryParse(json['server_time'].toString()) ?? DateTime.now() 
+          : DateTime.now(),
       note: (json['note'] ?? '').toString(),
     );
   }

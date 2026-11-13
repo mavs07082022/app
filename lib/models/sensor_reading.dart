@@ -20,9 +20,9 @@ class SensorReading {
     required this.soilMoisturePct,
     this.soilEcMsCm = 0.8,
     this.soilSalinity = 0.5,
-    this.soilNMgKg = 80.0,
-    this.soilPMgKg = 40.0,
-    this.soilKMgKg = 120.0,
+    this.soilNMgKg = 0.0,
+    this.soilPMgKg = 0.0,
+    this.soilKMgKg = 0.0,
     required this.soilPh,
     this.timestamp,
   });
@@ -44,13 +44,26 @@ class SensorReading {
       soilMoisturePct: d(json['soil_moisture_pct']),
       soilEcMsCm: d(json['soil_ec_ms_cm'], 0.8),
       soilSalinity: d(json['soil_salinity'], 0.5),
-      soilNMgKg: d(json['soil_n_mg_kg'], 80),
-      soilPMgKg: d(json['soil_p_mg_kg'], 40),
-      soilKMgKg: d(json['soil_k_mg_kg'], 120),
+      soilNMgKg: d(json['soil_n_mg_kg'], 0),
+      soilPMgKg: d(json['soil_p_mg_kg'], 0),
+      soilKMgKg: d(json['soil_k_mg_kg'], 0),
       soilPh: d(json['soil_ph'], 6.5),
       timestamp: json['timestamp']?.toString(),
     );
   }
+
+  // --- Anomaly Detection Getters ---
+  bool get isSensorOffline => soilMoisturePct == 0 && soilNMgKg == 0;
+  
+  bool get isPhAcidic => soilPh > 0 && soilPh < 5.5;
+  bool get isPhAlkaline => soilPh > 7.5;
+  
+  bool get isNLow => soilNMgKg > 0 && soilNMgKg < 50;
+  bool get isPLow => soilPMgKg > 0 && soilPMgKg < 20;
+  bool get isKLow => soilKMgKg > 0 && soilKMgKg < 80;
+  
+  bool get isMoistureLow => soilMoisturePct > 0 && soilMoisturePct < 30;
+  bool get isMoistureHigh => soilMoisturePct > 85;
 
   Map<String, dynamic> toJson() => {
         'zone_id': zoneId,

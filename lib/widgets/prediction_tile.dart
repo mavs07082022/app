@@ -9,18 +9,17 @@ class PredictionTile extends StatelessWidget {
 
   const PredictionTile({super.key, required this.prediction, this.highlight = false, this.showFactors = false});
 
-  static const _factorLabels = {
-    'soilMoisture': 'Soil Moisture',
-    'soilTemp': 'Soil Temp',
-    'airTemp': 'Air Temp',
-    'airHumidity': 'Air Humidity',
-  };
-
   @override
   Widget build(BuildContext context) {
     final color = Color(prediction.suitabilityColorValue);
     final isTop = prediction.isTopPick;
     final primaryNumber = prediction.score > 0 ? prediction.score.toStringAsFixed(1) : '0.0';
+
+    String getExplanation() {
+      if (prediction.score >= 70) return "This crop is highly suitable because the current soil moisture, pH, and NPK levels perfectly match its ideal growing environment.";
+      if (prediction.score >= 40) return "This crop is moderately suitable. The soil lacks some nutrients (NPK) or has an imbalanced pH for optimal growth.";
+      return "This crop is NOT suitable. The current soil is too dry, too acidic/alkaline, or severely lacks essential nutrients for this specific crop to survive.";
+    }
 
     return Container(
       margin: const EdgeInsets.symmetric(vertical: 5),
@@ -34,7 +33,6 @@ class PredictionTile extends StatelessWidget {
         child: ExpansionTile(
           tilePadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 0),
           childrenPadding: const EdgeInsets.fromLTRB(14, 0, 14, 14),
-          expandedCrossAxisAlignment: CrossAxisAlignment.start,
           title: Row(
             children: [
               if (prediction.rank > 0)
@@ -86,44 +84,11 @@ class PredictionTile extends StatelessWidget {
             ],
           ),
           children: [
-            if (prediction.explanation.isNotEmpty) ...[
-              const Divider(height: 1, color: AppColors.border),
-              const SizedBox(height: 10),
-              const Text("Why this rank?", style: TextStyle(fontWeight: FontWeight.w800, fontSize: 13)),
-              const SizedBox(height: 4),
-              Text(prediction.explanation, style: const TextStyle(fontSize: 12, color: AppColors.textSecondary, height: 1.4)),
-              const SizedBox(height: 10),
-            ],
-            if (showFactors && prediction.factors.isNotEmpty) ...[
-              const Text("Sensor Breakdown", style: TextStyle(fontWeight: FontWeight.w800, fontSize: 13)),
-              const SizedBox(height: 6),
-              ...prediction.factors.entries.map((e) {
-                final label = _factorLabels[e.key] ?? e.key;
-                final fs = e.value;
-                final available = fs.available;
-                final sc = fs.score ?? 0;
-                return Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 3),
-                  child: Row(
-                    children: [
-                      SizedBox(width: 110, child: Text(label, style: const TextStyle(fontSize: 11, color: AppColors.textSecondary))),
-                      Expanded(
-                        child: ClipRRect(
-                          borderRadius: BorderRadius.circular(4),
-                          child: LinearProgressIndicator(
-                            value: available ? sc / 100.0 : 0.0, minHeight: 6,
-                            backgroundColor: Colors.grey.shade200,
-                            valueColor: AlwaysStoppedAnimation(!available ? Colors.grey.shade300 : sc >= 80 ? AppColors.success : sc >= 55 ? AppColors.warn : AppColors.danger),
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      SizedBox(width: 42, child: Text(available ? sc.toStringAsFixed(0) : '--', textAlign: TextAlign.right, style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600))),
-                    ],
-                  ),
-                );
-              }),
-            ],
+            const Divider(height: 1, color: AppColors.border),
+            const SizedBox(height: 12),
+            const Text("Why this rank?", style: TextStyle(fontWeight: FontWeight.w800, fontSize: 13)),
+            const SizedBox(height: 4),
+            Text(getExplanation(), style: const TextStyle(fontSize: 12, color: AppColors.textSecondary, height: 1.4)),
           ],
         ),
       ),
